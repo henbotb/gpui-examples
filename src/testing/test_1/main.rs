@@ -2,6 +2,8 @@
 use gpui::{*, prelude::*};
 use gpui_component::*;
 
+// first experiment, intended to learn how to make context menus, resizable windows, and dropdown menus
+
 // div()
 //     .id() 
 //     // 1. layout role
@@ -240,7 +242,6 @@ impl Render for TitleBar {
                         .top_0()
                         .left_0()
                         .size_full()
-                        .bg(rgb(0x220000))
                         .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                             this.context_menu_pos = None;
                             cx.notify();

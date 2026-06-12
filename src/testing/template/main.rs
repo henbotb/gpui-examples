@@ -3,24 +3,32 @@ use gpui::*;
 use gpui_component::*;
 
 // div()
+//     .id() 
 //     // 1. layout role
 //     .flex()
 //     .flex_col()
+//     .justify_center()
+//     .items_center()
 //     // 2. sizing
 //     .w_full()
-//     .h(px(48.))
+//     .h(...)
+//     .aspect_square()
 //     // 3. spacing
 //     .px_3()
 //     .py_2()
 //     .gap_2()
 //     // 4. visual
-//     .bg(cx.theme().colors().surface)
+//     .bg(...)
 //     .border_b_1()
-//     .border_color(cx.theme().colors().border)
+//     .border_color(...)
+//     .rounded_sm()
 //     // 5. interaction
+//     .occlude()
 //     .on_click(cx.listener(...))
+//     .hover(...)
 //     // 6. children last
 //     .child(...)
+//     .children(...)
 
 pub struct MainWindow {
     

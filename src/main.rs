@@ -1,9 +1,10 @@
 use gpui::*;
 use gpui_component::Root;
 
-use crate::template_1::MainWindow;
+// this is the only line changing between tests
+use testing::test_1::main::MainWindow;
 
-pub mod template_1;
+pub mod testing;
 
 fn main() {
     let app = gpui_platform::application().with_assets(gpui_component_assets::Assets);

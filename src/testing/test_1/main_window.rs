@@ -1,8 +1,10 @@
 #![allow(unused_variables, dead_code, unused_imports)]
+use std::ops::Deref;
+
 use gpui::{*, prelude::*};
 use gpui_component::*;
 
-use crate::testing::test_1::{titlebar::Titlebar, sidebar::Sidebar, page::Page};
+use crate::testing::test_1::{titlebar::Titlebar, sidebar::Sidebar, page::Page, context_menu::*};
 
 // first experiment, intended to learn how to make context menus, resizable windows, and dropdown menus
 
@@ -34,38 +36,54 @@ use crate::testing::test_1::{titlebar::Titlebar, sidebar::Sidebar, page::Page};
 //     .child(...)
 //     .children(...)
 
-pub enum ContextMenuEmitter {}
-
-impl EventEmitter<ContextMenuEmitter> for Titlebar {}
-impl EventEmitter<ContextMenuEmitter> for Sidebar {}
-impl EventEmitter<ContextMenuEmitter> for MainWindow {}
-
-
-
-
-pub struct ContextMenu {
-}
-
-pub struct DropDownMenu {
-}
-
 pub struct MainWindow {
     titlebar: Entity<Titlebar>,
     sidebar: Entity<Sidebar>,
     page: Entity<Page>,
     context_menu: Option<Entity<ContextMenu>>,
-    dropdown_menu: Option<Entity<DropDownMenu>>,
+    // dropdown_menu: Option<Entity<DropDownMenu>>,
 }
+
+impl EventEmitter<ContextMenuEvent> for MainWindow {}
 
 impl MainWindow {
     pub fn new(cx: &mut Context<Self>) -> Self {
+        let titlebar = cx.new(|cx| Titlebar::new(cx));
+        let sidebar = cx.new(|cx| Sidebar::new(cx));
+        let page = cx.new(|cx| Page::new(cx));
+
+        Self::subscribe_to_cx_menu(&titlebar, cx).detach();
+        Self::subscribe_to_cx_menu(&sidebar, cx).detach();
+        Self::subscribe_to_cx_menu(&page, cx).detach();
+
         Self {
-            titlebar: cx.new(|cx| Titlebar::new(cx)),
-            sidebar: cx.new(|cx| Sidebar::new(cx)),
-            page: cx.new(|cx| Page::new(cx)),
+            titlebar,
+            sidebar,
+            page,
             context_menu: None,
-            dropdown_menu: None,
+            // dropdown_menu: None,
         }
+    }
+
+    fn subscribe_to_cx_menu<E>(entity: &Entity<E>, cx: &mut Context<Self>,) -> Subscription 
+    where
+        E: EventEmitter<ContextMenuEvent>
+    {
+        cx.subscribe(&entity, |this, _, event, cx| {
+            match event {
+                ContextMenuEvent::Open { position, build } => {
+                    // maybe add some logic to merely move if calculating in the same area, will need new flag to indicate a conditional change
+                    let cx_menu = cx.new(|cx| ContextMenu::new(*position, build.clone(), cx));
+                    Self::subscribe_to_cx_menu(&cx_menu, cx).detach();
+                    this.context_menu = Some(cx_menu);
+                    cx.notify();
+                },
+                ContextMenuEvent::Close => {
+                    this.context_menu = None;
+                    cx.notify();
+                }
+            }
+        })
     }
 
     pub fn has_custom_titlebar() -> bool {
@@ -89,6 +107,17 @@ impl Render for MainWindow {
                 .child(self.sidebar.clone())
                 .child(self.page.clone())
             )
+            .when_some(self.context_menu.clone(), move |this, context_menu| {
+                this.child(
+                    deferred(anchored()
+                        .anchor(Anchor::TopLeft)
+                        .position(context_menu.read(cx).position)
+                        .snap_to_window_with_margin(px(8.))
+                        .child(context_menu)
+                    )
+                )
+            })
+        
+
     }
 }
-

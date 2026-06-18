@@ -1,25 +1,21 @@
 #![allow(unused_variables, dead_code, unused_imports)]
+use std::rc::Rc;
 use gpui::{*, prelude::*};
 use gpui_component::*;
 
+use crate::testing::test_1::context_menu::ContextMenuEvent;
+
 pub struct Titlebar {
-    context_menu_pos: Option<Point<Pixels>>,
-    titlebar_dropdown: Option<TitlebarDropdown>,
 }
 
 impl Titlebar {
     pub fn new(cx: &mut Context<Self>) -> Self {
         Self {
-            context_menu_pos: None,
-            titlebar_dropdown: None,
         }
     }
 }
 
-#[derive(Clone, Copy)]
-enum TitlebarDropdown {
-    Settings,
-}
+impl EventEmitter<ContextMenuEvent> for Titlebar {}
 
 impl Render for Titlebar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -45,43 +41,7 @@ impl Render for Titlebar {
             .occlude()
             .hover(|this| this.bg(titlebar_hover))
             .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, window, cx| {
-                this.titlebar_dropdown = Some(TitlebarDropdown::Settings);
-                cx.notify();
             }))
-            .when_some(self.titlebar_dropdown, |this, dropdown| {
-                let dropdown = match dropdown {
-                    TitlebarDropdown::Settings => div()
-                        .id("settings-dropdown")
-                        .flex()
-                        .flex_col()
-                        .min_w_40()
-                        .p_1p5()
-                        .gap_y_0p5()
-                        .border_1()
-                        .rounded_sm()
-                        .bg(cx.theme().title_bar)
-                        .border_color(cx.theme().title_bar_border)
-                        .occlude()
-                        .child("Theme")
-                        .child("Check for updates")
-                        .child("Help")
-                    ,
-                };
-
-                this.child(
-                    deferred(
-                        anchored()
-                            .anchor(Anchor::RightCenter)
-                            .snap_to_window_with_margin(px(8.))
-                            .child(dropdown
-                                .on_mouse_down_out(cx.listener(|this, _, _, cx| {
-                                    this.titlebar_dropdown = None;
-                                    cx.notify();
-                                }))
-                            )
-                    )
-                )
-            })
             .child(IconName::Settings);
 
         let theme_switcher = div()
@@ -264,8 +224,14 @@ impl Render for Titlebar {
                 window.start_window_move();
             })
             .on_mouse_down(MouseButton::Right, cx.listener(|this, event: &MouseDownEvent, _, cx| {
-                this.context_menu_pos = Some(event.position);
-                cx.notify();
+                cx.emit(ContextMenuEvent::Open { 
+                    position: event.position, 
+                    build: Rc::new(|_, _| {
+                        div()
+                            .child("Do something titlebar")
+                            .child("Do something else page")
+                    })
+                });
             }))
             .child(div()
                 .flex()
@@ -275,49 +241,5 @@ impl Render for Titlebar {
                 .child(theme_switcher)
             )
             .child(window_controls)
-            .children(self.context_menu_pos.map(|pos| {
-                let cx_menu = div()
-                    .flex()
-                    .flex_col()
-                    .min_w_40()
-                    .p_1p5()
-                    .gap_y_0p5()
-                    .border_1()
-                    .rounded_sm()
-                    .bg(cx.theme().title_bar)
-                    .border_color(cx.theme().title_bar_border)
-                    .occlude()
-                    .children((0..5).map(|num| div()
-                        .id(format!("titlebar-cx-{}", num))
-                        .px_2()
-                        .py_1()
-                        .text_sm()
-                        .rounded_xs()
-                        .hover(|this| this.bg(titlebar_hover))
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            println!("Clicked menu item {}", num);
-                            this.context_menu_pos = None;
-                            cx.notify(); // not sure why this isnt necessary
-                        }))
-                        .child(format!("Titlebar {}", num))
-                    ));
-                deferred({
-                    let window_size = window.viewport_size();
-                    div()
-                        .absolute()
-                        .top_0()
-                        .left_0()
-                        .w(window_size.width)
-                        .h(window_size.height)
-                        .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                            this.context_menu_pos = None;
-                            cx.notify();
-                        }))
-                        .child(
-                            anchored().position(pos).child(cx_menu)
-                        )
-                    })
-                .with_priority(1)
-            }))
     }
 }
